@@ -11,8 +11,8 @@
 //! # Installation
 //! ```toml
 //! [dependencies]
-//! polodb_core = "0.4.3"
-//! polodb_bson = "0.4.3"
+//! polodb_core = "0.6.0"
+//! polodb_bson = "0.6.0"
 //! ```
 //!
 //! # Usage
@@ -38,6 +38,7 @@ mod context;
 mod db_handle;
 pub mod dump;
 mod config;
+mod macros;
 
 pub use db::{Database, DbResult};
 pub use config::Config;

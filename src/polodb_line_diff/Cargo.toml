@@ -1,14 +1,14 @@
 [package]
-name = "polodb_cli"
-version = "0.6.0"
+name = "polodb_line_diff"
+version = "0.1.0"
 authors = ["Vincent Chan <okcdz@diverse.space>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+name="polodb_line_diff"
+path= "lib.rs"
+
 [dependencies]
-polodb_core = { path = "../polodb_core" }
-rustyline = "6.2.0"
-quick-js = "0.3.4"
-clap = "2.33.2"
-chrono = "0.4"
+ansi_term = "0.12"

@@ -278,6 +278,7 @@ static napi_status JsArrayValueToDbArray_SetElement(napi_env env, DbArray* arr, 
 
         PLDB_free_doc(child_doc);
       }
+      break;
     }
     
     default:
@@ -468,6 +469,7 @@ static napi_status JsValueToDbDocument_SetProperty(napi_env env, DbDocument* doc
 
         PLDB_free_doc(child_doc);
       }
+      break;
     }
     
     default:
@@ -996,7 +998,7 @@ ret:
     PLDB_free_doc(query_doc);
     query_doc = NULL;
   }
-  if (update_doc == NULL) {
+  if (update_doc != NULL) {
     PLDB_free_doc(update_doc);
     update_doc = NULL;
   }
@@ -1200,8 +1202,16 @@ static napi_value Database_collection(napi_env env, napi_callback_info info) {
 
   int ec = PLDB_get_collection_meta_by_name(db, name_buffer, &col_id, &meta_version);
   if (ec < 0) {
-    napi_throw_error(env, NULL, PLDB_error_msg());
-    return NULL;
+    if (ec == PLDB_ERR_COLLECTION_NOT_FOUND) {
+      int ec2 = PLDB_create_collection(db, name_buffer, &col_id, &meta_version);
+      if (ec2 < 0) {
+        napi_throw_error(env, NULL, PLDB_error_msg());
+        return NULL;
+      }
+    } else {
+      napi_throw_error(env, NULL, PLDB_error_msg());
+      return NULL;
+    }
   }
 
   napi_value js_col_id;

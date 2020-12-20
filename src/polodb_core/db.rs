@@ -1,5 +1,7 @@
 use std::rc::Rc;
 use std::path::Path;
+use std::ops::FnOnce;
+use std::error::Error as ErrorTrait;
 use polodb_bson::{Document, ObjectId};
 use super::error::DbErr;
 use crate::Config;
@@ -189,6 +191,12 @@ pub struct Database {
 
 pub type DbResult<T> = Result<T, DbErr>;
 
+#[derive(Debug)]
+pub enum Error<E> where E: ErrorTrait {
+    Db(DbErr),
+    Other(E),
+}
+
 impl Database {
 
     #[inline]
@@ -267,6 +275,25 @@ impl Database {
     #[inline]
     pub fn rollback(&mut self) -> DbResult<()> {
         self.ctx.rollback()
+    }
+
+    pub fn transaction_with_closure<F, E>(&mut self, ty: Option<TransactionType>, func: F) -> Result<(), Error<E>>
+    where
+        F: FnOnce(&mut Self) -> Result<(), E>,
+        E: ErrorTrait
+    {
+        self.ctx.start_transaction(ty).or_else(|e| Err(Error::Db(e)))?;
+
+        match func(self) {
+            Ok(_) => {
+                self.ctx.commit().or_else(|e| Err(Error::Db(e)))?;
+                Ok(())
+            },
+            Err(e) => {
+                self.ctx.rollback().or_else(|e| Err(Error::Db(e)))?;
+                Err(Error::Other(e))
+            }
+        }
     }
 
     #[allow(dead_code)]
@@ -409,6 +436,28 @@ mod tests {
 
         let mut collection = db.collection("test").unwrap();
         assert_eq!(collection.count().unwrap(), 0);
+    }
+
+    #[test]
+    fn test_transaction_closure() {
+        use std::fmt::Error as FmtError;
+
+        let mut db = prepare_db("test_transaction_closure");
+
+        db.transaction_with_closure(None, |db| {
+            let mut collection = db.create_collection("test").unwrap();
+
+            for i in 0..10{
+                let content = i.to_string();
+                let mut new_doc = mk_document! {
+                        "_id": i,
+                        "content": content,
+                    };
+                collection.insert(&mut new_doc).unwrap();
+            }
+
+            Ok::<(), FmtError>(())
+        }).unwrap();
     }
 
     #[test]
